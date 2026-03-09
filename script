@@ -1,3 +1,7 @@
+-- Nova Hub - Minecraft: End Update Exploit
+-- God Mode removed (didn't work)
+-- Kept: X-Ray, Fullbright, Teleport to End, Reset Character
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -5,375 +9,135 @@ local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
-local mouse = player:GetMouse()
 
--- Load UI
+-- Kavo UI
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-task.wait(0.2)
-local Window = Library.CreateLib("Minecraft Nova Hub", "DarkTheme")
+local Window = Library.CreateLib("Nova Hub", "DarkTheme")
 
 -- Variables
-local flyEnabled = false
-local noclipEnabled = false
-local speedEnabled = false
-local infJumpEnabled = false
-local godEnabled = false
 local fullbrightEnabled = false
 local xrayEnabled = false
 
-local flySpeed = 50
-local walkSpeed = 64
-
 local XRAY_TRANS = 0.7
-local chunksFolder = Workspace:WaitForChild("Chunks",15)
+
+local chunksFolder = Workspace:WaitForChild("Chunks", 15)
 
 local trackedXray = setmetatable({}, {__mode = "v"})
 local xrayConnection = nil
 
--- Helper
+-- X-Ray
 local function setTransparency(obj, trans)
-
     if obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation") then
         obj.Transparency = trans
-
     elseif obj:IsA("Decal") or obj:IsA("Texture") then
         obj.Transparency = 0.4
-
     elseif obj:IsA("SurfaceAppearance") then
         obj.ColorMapTransparency = 0.4
         obj.MetalnessMapTransparency = 0.4
         obj.NormalMapTransparency = 0.4
         obj.RoughnessMapTransparency = 0.4
     end
-
 end
 
--- Xray
 local function toggleXray(state)
-
     if xrayEnabled == state or not chunksFolder then return end
     xrayEnabled = state
 
     if state then
-
         xrayConnection = chunksFolder.DescendantAdded:Connect(function(obj)
-
             setTransparency(obj, XRAY_TRANS)
-
             if obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation") then
                 trackedXray[obj] = true
             end
-
         end)
 
         task.spawn(function()
-
             local desc = chunksFolder:GetDescendants()
-
-            for i = 1,#desc do
-
+            for i = 1, #desc do
                 local obj = desc[i]
-
                 if not trackedXray[obj] and (obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation")) then
-
                     setTransparency(obj, XRAY_TRANS)
                     trackedXray[obj] = true
-
                 elseif obj:IsA("Decal") or obj:IsA("Texture") or obj:IsA("SurfaceAppearance") then
-
                     setTransparency(obj, XRAY_TRANS)
-
                 end
-
-                if i % 250 == 0 then
-                    task.wait()
-                end
-
+                if i % 250 == 0 then task.wait() end
             end
-
         end)
-
     else
-
-        if xrayConnection then
-            xrayConnection:Disconnect()
-            xrayConnection = nil
-        end
-
+        if xrayConnection then xrayConnection:Disconnect() xrayConnection = nil end
         for obj in pairs(trackedXray) do
-
             if obj and obj.Parent then
-
-                setTransparency(obj,0)
-
-                for _,child in ipairs(obj:GetChildren()) do
-
+                setTransparency(obj, 0)
+                for _, child in ipairs(obj:GetChildren()) do
                     if child:IsA("Decal") or child:IsA("Texture") or child:IsA("SurfaceAppearance") then
-                        setTransparency(child,0)
+                        setTransparency(child, 0)
                     end
-
                 end
-
             end
-
         end
-
         trackedXray = setmetatable({}, {__mode = "v"})
-
     end
-
-end
-
--- Fly
-local function toggleFly()
-
-    flyEnabled = not flyEnabled
-
-    local char = player.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-
-    local root = char.HumanoidRootPart
-
-    local bv
-    local bav
-
-    if flyEnabled then
-
-        bv = Instance.new("BodyVelocity")
-        bv.MaxForce = Vector3.new(1e9,1e9,1e9)
-        bv.Velocity = Vector3.new()
-        bv.Parent = root
-
-        bav = Instance.new("BodyAngularVelocity")
-        bav.MaxTorque = Vector3.new(1e9,1e9,1e9)
-        bav.AngularVelocity = Vector3.new()
-        bav.Parent = root
-
-        task.spawn(function()
-
-            while flyEnabled and root.Parent do
-
-                local cam = Workspace.CurrentCamera
-                local moveDir = Vector3.new()
-
-                if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir += cam.CFrame.LookVector end
-                if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir -= cam.CFrame.LookVector end
-                if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir -= cam.CFrame.RightVector end
-                if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir += cam.CFrame.RightVector end
-
-                if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir += Vector3.new(0,1,0) end
-                if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then moveDir -= Vector3.new(0,1,0) end
-
-                bv.Velocity = moveDir * flySpeed
-
-                task.wait()
-
-            end
-
-            if bv then bv:Destroy() end
-            if bav then bav:Destroy() end
-
-        end)
-
-    end
-
-end
-
--- Noclip
-local function toggleNoclip()
-
-    noclipEnabled = not noclipEnabled
-
-    task.spawn(function()
-
-        while noclipEnabled do
-
-            for _,v in pairs(player.Character:GetChildren()) do
-                if v:IsA("BasePart") then
-                    v.CanCollide = false
-                end
-            end
-
-            task.wait()
-
-        end
-
-        for _,v in pairs(player.Character:GetChildren()) do
-            if v:IsA("BasePart") then
-                v.CanCollide = true
-            end
-        end
-
-    end)
-
-end
-
--- Speed
-local function updateSpeed()
-
-    local hum = player.Character and player.Character:FindFirstChildWhichIsA("Humanoid")
-
-    if hum then
-        hum.WalkSpeed = speedEnabled and walkSpeed or 16
-    end
-
-end
-
--- Infinite Jump
-UserInputService.JumpRequest:Connect(function()
-
-    if infJumpEnabled then
-
-        local hum = player.Character and player.Character:FindFirstChildWhichIsA("Humanoid")
-
-        if hum then
-            hum:ChangeState("Jumping")
-        end
-
-    end
-
-end)
-
--- God Mode
-local function toggleGod()
-
-    godEnabled = not godEnabled
-
-    task.spawn(function()
-
-        while godEnabled do
-
-            local hum = player.Character and player.Character:FindFirstChildWhichIsA("Humanoid")
-
-            if hum then
-                hum.Health = hum.MaxHealth
-            end
-
-            task.wait(0.1)
-
-        end
-
-    end)
-
 end
 
 -- Fullbright
-local function toggleFullbright()
-
-    fullbrightEnabled = not fullbrightEnabled
-
-    if fullbrightEnabled then
-
+local function toggleFullbright(state)
+    fullbrightEnabled = state
+    if state then
         Lighting.Brightness = 2
         Lighting.Ambient = Color3.new(1,1,1)
         Lighting.GlobalShadows = false
         Lighting.FogEnd = 100000
-
     else
-
         Lighting.Brightness = 1
         Lighting.Ambient = Color3.new(0.5,0.5,0.5)
         Lighting.GlobalShadows = true
         Lighting.FogEnd = 1000
-
     end
-
 end
 
--- Teleport
+-- TP End
 local function tpToEnd()
-
-    local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-
+    local char = player.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
     if root then
-        root.CFrame = CFrame.new(0,200,0)
+        root.CFrame = CFrame.new(0, 200, 0)
     end
-
 end
 
+-- ======================================
 -- UI Tabs
-local Movement = Window:NewTab("Movement")
+-- ======================================
+
 local PlayerTab = Window:NewTab("Player")
 local Visual = Window:NewTab("Visuals")
 
--- Movement
-local mSect = Movement:NewSection("Movement")
-
-mSect:NewToggle("Fly","WASD + Space/Shift",function()
-    toggleFly()
-end)
-
-mSect:NewToggle("Noclip","",function()
-    toggleNoclip()
-end)
-
-mSect:NewToggle("Speed","",function(v)
-    speedEnabled = v
-    updateSpeed()
-end)
-
-mSect:NewSlider("WalkSpeed","",300,16,function(v)
-    walkSpeed = v
-    updateSpeed()
-end)
-
-mSect:NewToggle("Infinite Jump","",function(v)
-    infJumpEnabled = v
-end)
-
--- Player
+-- Player Tab
 local pSect = PlayerTab:NewSection("Player")
-
-pSect:NewToggle("God Mode","",function()
-    toggleGod()
+pSect:NewButton("Teleport to End", "Common spawn point", tpToEnd)
+pSect:NewButton("Reset Character", "", function()
+    if player.Character then player.Character:BreakJoints() end
 end)
 
-pSect:NewButton("Teleport to End","",tpToEnd)
-
-pSect:NewButton("Reset Character","",function()
-    if player.Character then
-        player.Character:BreakJoints()
-    end
-end)
-
--- Visual
+-- Visuals Tab
 local vSect = Visual:NewSection("Visuals")
-
-vSect:NewToggle("Fullbright","",function()
-    toggleFullbright()
-end)
-
-vSect:NewToggle("X-Ray V1","",function(v)
-    toggleXray(v)
-end)
-
-vSect:NewSlider("X-Ray Transparency","",100,0,function(value)
-
+vSect:NewToggle("Fullbright", "", function(state) toggleFullbright(state) end)
+vSect:NewToggle("X-Ray", "Toggle with , key too", function(state) toggleXray(state) end)
+vSect:NewSlider("X-Ray Transparency", "", 100, 0, function(value)
     XRAY_TRANS = value / 100
-
     if xrayEnabled then
         toggleXray(false)
         task.wait(0.1)
         toggleXray(true)
     end
+end, 100)
 
-end,100)
-
--- Xray Keybind
-UserInputService.InputBegan:Connect(function(input,gp)
-
+-- X-Ray Keybind (,)
+UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
-
     if input.KeyCode == Enum.KeyCode.Comma then
         toggleXray(not xrayEnabled)
     end
-
 end)
 
--- Respawn
-player.CharacterAdded:Connect(function()
-    task.wait(1)
-    updateSpeed()
-end)
-
-print("Nova Hub Loaded")
+print("Nova Hub Loaded!")
