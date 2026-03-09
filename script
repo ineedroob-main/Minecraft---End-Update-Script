@@ -10,7 +10,7 @@ local mouse = player:GetMouse()
 -- Load UI
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
 task.wait(0.2)
-local Window = Library.CreateLib("Minecraft: End Update Hub", "DarkTheme")
+local Window = Library.CreateLib("Minecraft Nova Hub", "DarkTheme")
 
 -- Variables
 local flyEnabled = false
@@ -376,4 +376,4 @@ player.CharacterAdded:Connect(function()
     updateSpeed()
 end)
 
-print("Minecraft End Update Hub Loaded")
+print("Nova Hub Loaded")
