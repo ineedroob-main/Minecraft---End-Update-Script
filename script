@@ -1,6 +1,8 @@
 -- Nova Hub - Minecraft: End Update Exploit
--- God Mode removed (didn't work)
--- Kept: X-Ray, Fullbright, Teleport to End, Reset Character
+-- FIXED: Ore ESP now properly works after 1 day of fixing
+-- Version 1.2 : subject to change if you are using loadstring
+-- loadstring under this comment:
+-- loadstring(game:HttpGet("https://raw.githubusercontent.com/ineedroob-main/Minecraft---End-Update-Script/main/script"))()
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -17,31 +19,159 @@ local Window = Library.CreateLib("Nova Hub", "DarkTheme")
 -- Variables
 local fullbrightEnabled = false
 local xrayEnabled = false
+local oreESPEnabled = false
 
-local XRAY_TRANS = 0.7
+local XRAY_TRANS = 0.85
 
 local chunksFolder = Workspace:WaitForChild("Chunks", 15)
 
 local trackedXray = setmetatable({}, {__mode = "v"})
 local xrayConnection = nil
+local oreESPConnection = nil
+local oreAdornments = {}
 
--- X-Ray
+-- ORE IDS
+local ORE_IDS = {
+    [18148955345] = "Coal",
+    [18148977854] = "Gold",
+    [18148954310] = "Iron",   -- fixed the extra 'e'
+    [18148955169] = "Diamond",
+}
+
+-- Textures (for OreESP)
+local function getAssetId(tex)
+    if not tex or tex == "" then return nil end
+    
+    -- rbxassetid://18148955345
+    local id = tex:match("rbxassetid://(%d+)")
+    if id then return tonumber(id) end
+    
+    -- http://www.roblox.com/Thumbs/Asset.ashx?...assetId=18148955345
+    id = tex:match("assetId=(%d+)")
+    if id then return tonumber(id) end
+    
+    -- just in case it's /asset/?id=18148955345
+    id = tex:match("id=(%d+)")
+    if id then return tonumber(id) end
+    
+    return nil
+end
+
+-- Finds "Part" child
+local function isOrePart(obj)
+    if obj.Name ~= "Part" then
+        return false
+    end
+    if not (obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation")) then
+        return false
+    end
+
+    -- Ore Finder
+    for _, child in ipairs(obj:GetChildren()) do
+        if child:IsA("Texture") or child:IsA("Decal") then
+            local tex = child.Texture
+            local assetNum = getAssetId(tex)
+            if assetNum and ORE_IDS[assetNum] then
+                return ORE_IDS[assetNum]
+            end
+        elseif child:IsA("SurfaceAppearance") then
+            local tex = child.ColorMap
+            local assetNum = getAssetId(tex)
+            if assetNum and ORE_IDS[assetNum] then
+                return ORE_IDS[assetNum]
+            end
+        end
+    end
+    return false
+end
+
+-- Create ESP
+local function addOreESP(part, oreType)
+    if oreAdornments[part] then return end
+
+    local box = Instance.new("BoxHandleAdornment")
+    box.Name = "OreESP_Box"
+    box.Adornee = part
+    box.Size = part.Size + Vector3.new(0.4, 0.4, 0.4)
+    box.Color3 = (oreType == "Diamond" and Color3.fromRGB(0, 220, 255)) or
+                 (oreType == "Gold"    and Color3.fromRGB(255, 215, 0)) or
+                 (oreType == "Iron"    and Color3.fromRGB(200, 110, 40)) or
+                 Color3.fromRGB(40, 40, 40)
+    box.Transparency = 0.35
+    box.AlwaysOnTop = true
+    box.ZIndex = 10
+    box.Parent = part
+
+    local bb = Instance.new("BillboardGui")
+    bb.Name = "OreESP_Label"
+    bb.Adornee = part
+    bb.Size = UDim2.new(0, 140, 0, 36)
+    bb.StudsOffset = Vector3.new(0, part.Size.Y / 2 + 2.5, 0)
+    bb.AlwaysOnTop = true
+    bb.Parent = part
+
+    local text = Instance.new("TextLabel")
+    text.Size = UDim2.new(1, 0, 1, 0)
+    text.BackgroundTransparency = 1
+    text.Text = oreType .. " Ore"
+    text.TextColor3 = box.Color3
+    text.TextStrokeTransparency = 0.4
+    text.TextStrokeColor3 = Color3.new(0,0,0)
+    text.TextScaled = true
+    text.Font = Enum.Font.SourceSansBold
+    text.Parent = bb
+
+    oreAdornments[part] = {box, bb}
+end
+
+-- Toggle Ore ESP
+local function toggleOreESP(state)
+    oreESPEnabled = state
+    if state then
+        if chunksFolder then
+            task.spawn(function()
+                for _, obj in ipairs(chunksFolder:GetDescendants()) do
+                    local oreType = isOrePart(obj)
+                    if oreType then addOreESP(obj, oreType) end
+                    task.wait()
+                end
+            end)
+        end
+
+        oreESPConnection = chunksFolder.DescendantAdded:Connect(function(obj)
+            local oreType = isOrePart(obj)
+            if oreType then addOreESP(obj, oreType) end
+        end)
+    else
+        if oreESPConnection then oreESPConnection:Disconnect() oreESPConnection = nil end
+        for part, visuals in pairs(oreAdornments) do
+            if part and part.Parent then
+                for _, v in ipairs(visuals) do v:Destroy() end
+            end
+        end
+        oreAdornments = {}
+    end
+end
+
+-- X-Ray (Fixed Lag but Slower)
 local function setTransparency(obj, trans)
     if obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation") then
         obj.Transparency = trans
     elseif obj:IsA("Decal") or obj:IsA("Texture") then
-        obj.Transparency = 0.4
+        obj.Transparency = trans + 0.1
     elseif obj:IsA("SurfaceAppearance") then
-        obj.ColorMapTransparency = 0.4
-        obj.MetalnessMapTransparency = 0.4
-        obj.NormalMapTransparency = 0.4
-        obj.RoughnessMapTransparency = 0.4
+        obj.ColorMapTransparency = trans + 0.05
+        obj.MetalnessMapTransparency = trans + 0.05
+        obj.NormalMapTransparency = trans + 0.05
+        obj.RoughnessMapTransparency = trans + 0.05
     end
 end
 
+local xrayProcessing = false
 local function toggleXray(state)
-    if xrayEnabled == state or not chunksFolder then return end
+    if xrayEnabled == state or not chunksFolder or xrayProcessing then return end
     xrayEnabled = state
+    xrayProcessing = true
 
     if state then
         xrayConnection = chunksFolder.DescendantAdded:Connect(function(obj)
@@ -61,8 +191,9 @@ local function toggleXray(state)
                 elseif obj:IsA("Decal") or obj:IsA("Texture") or obj:IsA("SurfaceAppearance") then
                     setTransparency(obj, XRAY_TRANS)
                 end
-                if i % 250 == 0 then task.wait() end
+                if i % 100 == 0 then task.wait(0.03) end
             end
+            xrayProcessing = false
         end)
     else
         if xrayConnection then xrayConnection:Disconnect() xrayConnection = nil end
@@ -77,10 +208,10 @@ local function toggleXray(state)
             end
         end
         trackedXray = setmetatable({}, {__mode = "v"})
+        xrayProcessing = false
     end
 end
 
--- Fullbright
 local function toggleFullbright(state)
     fullbrightEnabled = state
     if state then
@@ -96,43 +227,30 @@ local function toggleFullbright(state)
     end
 end
 
--- TP End
-local function tpToEnd()
-    local char = player.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    if root then
-        root.CFrame = CFrame.new(0, 200, 0)
-    end
-end
-
--- ======================================
--- UI Tabs
--- ======================================
-
+-- UI
 local PlayerTab = Window:NewTab("Player")
 local Visual = Window:NewTab("Visuals")
 
--- Player Tab
 local pSect = PlayerTab:NewSection("Player")
-pSect:NewButton("Teleport to End", "Common spawn point", tpToEnd)
 pSect:NewButton("Reset Character", "", function()
     if player.Character then player.Character:BreakJoints() end
 end)
 
--- Visuals Tab
 local vSect = Visual:NewSection("Visuals")
 vSect:NewToggle("Fullbright", "", function(state) toggleFullbright(state) end)
 vSect:NewToggle("X-Ray", "Toggle with , key too", function(state) toggleXray(state) end)
-vSect:NewSlider("X-Ray Transparency", "", 100, 0, function(value)
+vSect:NewToggle("Ore ESP", "Now detects broken Texture URLs on 'Part' objects", function(state)
+    toggleOreESP(state)
+end)
+vSect:NewSlider("X-Ray Transparency", "Higher = more see-through (min 40%)", 100, 40, function(value)
     XRAY_TRANS = value / 100
     if xrayEnabled then
         toggleXray(false)
-        task.wait(0.1)
+        task.wait(0.2)
         toggleXray(true)
     end
-end, 100)
+end, 85)
 
--- X-Ray Keybind (,)
 UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
     if input.KeyCode == Enum.KeyCode.Comma then
