@@ -2,7 +2,7 @@
 ### This repo is to hold a roblox script that was made for the Roblox game: Minecraft: End Update.
 
 # Script:
-- [Non-Raw](https://github.com/ineedroob-main/Minecraft---End-Update-Script/blob/main/script)
+- [Github-Raw](https://github.com/ineedroob-main/Minecraft---End-Update-Script/blob/main/script)
 - [Raw](https://raw.githubusercontent.com/ineedroob-main/Minecraft---End-Update-Script/refs/heads/main/script)
 - [Scriptblox](https://scriptblox.com/script/Minecraft:-End-Update-Minecraft-Nova-Hub-for-Roblox-134523)
 
