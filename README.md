@@ -5,6 +5,10 @@
 - [Github-Raw](https://github.com/ineedroob-main/Minecraft---End-Update-Script/blob/main/script)
 - [Raw](https://raw.githubusercontent.com/ineedroob-main/Minecraft---End-Update-Script/refs/heads/main/script)
 - [Scriptblox](https://scriptblox.com/script/Minecraft:-End-Update-Minecraft-Nova-Hub-for-Roblox-134523)
+- Loadstring:
+`
+loadstring(game:HttpGet("https://raw.githubusercontent.com/ineedroob-main/Minecraft---End-Update-Script/main/script"))()
+`
 
 ### Disclaimers
 - No AI or LLMs were used to create or distribute the script, This is 100% human-made.
